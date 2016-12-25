@@ -35,6 +35,9 @@ def test_keyslot():
     """
     n = NodeManager([{}])
 
+    assert n.keyslot(b"\x01") == 4129
+    assert n.keyslot(u"测试") == n.keyslot(b"\xe6\xb5\x8b\xe8\xaf\x95")
+    assert n.keyslot(b"\xe6\xb5\x8b\xe8\xaf\x95") == 8027
     assert n.keyslot("foo") == 12182
     assert n.keyslot("{foo}bar") == 12182
     assert n.keyslot("{foo}") == 12182

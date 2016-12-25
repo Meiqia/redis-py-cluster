@@ -2,7 +2,6 @@
 
 # python std lib
 import random
-import sys
 
 # rediscluster imports
 from .crc import crc16
@@ -10,7 +9,7 @@ from .exceptions import RedisClusterException
 
 # 3rd party imports
 from redis import StrictRedis
-from redis._compat import unicode
+from redis._compat import b, basestring, bytes, long, unicode
 from redis import ConnectionError
 
 
@@ -37,45 +36,31 @@ class NodeManager(object):
         if not self.startup_nodes:
             raise RedisClusterException("No startup nodes provided")
 
-        # Minor performance tweak to avoid having to check inside the method
-        # for each call to keyslot method.
-        if sys.version_info[0] < 3:
-            self.keyslot = self.keyslot_py_2
-        else:
-            self.keyslot = self.keyslot_py_3
+    def encode(self, value):
+        """"Return a bytestring representation of the value."""
+        if isinstance(value, bytes):
+            return value
+        elif isinstance(value, (int, long)):
+            value = b(str(value))
+        elif isinstance(value, float):
+            value = b(repr(value))
+        elif not isinstance(value, basestring):
+            value = unicode(value)
+        if isinstance(value, unicode):
+            value = value.encode('utf-8')
+        return value
 
-    def keyslot_py_2(self, key):
+    def keyslot(self, key):
         """
         Calculate keyslot for a given key.
         Tuned for compatibility with python 2.7.x
         """
-        k = unicode(key)
+        k = self.encode(key)
 
-        start = k.find("{")
-
-        if start > -1:
-            end = k.find("}", start + 1)
-            if end > -1 and end != start + 1:
-                k = k[start + 1:end]
-
-        return crc16(k) % self.RedisClusterHashSlots
-
-    def keyslot_py_3(self, key):
-        """
-        Calculate keyslot for a given key.
-        Tuned for compatibility with supported python 3.x versions
-        """
-        try:
-            # Handle bytes case
-            k = str(key, encoding='utf-8')
-        except TypeError:
-            # Convert others to str.
-            k = str(key)
-
-        start = k.find("{")
+        start = k.find(b"{")
 
         if start > -1:
-            end = k.find("}", start + 1)
+            end = k.find(b"}", start + 1)
             if end > -1 and end != start + 1:
                 k = k[start + 1:end]
 
